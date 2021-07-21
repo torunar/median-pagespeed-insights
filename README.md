@@ -2,12 +2,14 @@
 
 Measures site performance multiple times via Google PageSpeed Insights and outputs the median value between measurements.
 
+https://torunar.github.io/median-pagespeed-insights/
+
 ## Why?
 
 Performance of any complex site tends to fluctuate.
 Unfortunately, these fluctuations affect Google PSI results, thus the only way to get real numbers is to perform multiple measurements.
 
-But guess what? **Doing things manually sucks!** 
+But guess what? **Doing things manually sucks!**
 
 That's why I built this simply stupid page to automate PSI interaction process.
 

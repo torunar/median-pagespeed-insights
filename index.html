@@ -24,10 +24,16 @@
 </style>
 <body>
 
-<form action="#" method="get" onsubmit="startPerformanceTest();" class="environment">
-    <input type="url" required class="environment__url" size="32" placeholder="https://example.com">
-    <input type="number" required class="environment__iterations" value="15" size="6">
-    <button type="submit" class="run-scan">test page speed</button>
+<form action="#" method="get" onsubmit="startPerformanceTest(); return false;" class="environment">
+    <div>
+        <input type="url" required class="environment__url" size="32" placeholder="https://example.com">
+        <input type="number" required class="environment__iterations" value="15" size="6">
+        <button type="submit" class="run-scan">test page speed</button>
+    </div>
+    <div>
+        <input type="text" class="environment__api-key" size="32" placeholder="api key">
+        <a href="https://developers.google.com/speed/docs/insights/v5/get-started#APIKey" target="_blank">get api key</a>
+    </div>
     <progress class="environment__progress"></progress>
 </form>
 
@@ -58,6 +64,7 @@
 </table>
 <script>
     const urlContainer = document.querySelector('.environment__url'),
+        apiKeyContainer = document.querySelector('.environment__api-key'),
         iterationsContainer = document.querySelector('.environment__iterations'),
         progressContainer = document.querySelector('.environment__progress'),
         resultsContainer = document.querySelector('.results__iterations'),
@@ -69,18 +76,18 @@
         return (new Function('data', `return \`${template}\`;`))(data);
     };
 
-    const getPagePerformanceByStrategy = async (url, strategy) => {
-        const requestUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?strategy=${strategy}&url=${encodeURIComponent(url)}`;
+    const getPagePerformanceByStrategy = async (url, strategy, key) => {
+        const requestUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?strategy=${strategy}&url=${encodeURIComponent(url)}&key=${key}`;
         const response = await fetch(requestUrl);
         const json = await response.json();
 
         return Math.floor(json.lighthouseResult.categories.performance.score * 100);
     };
 
-    const getPagePerformance = async (url) => {
+    const getPagePerformance = async (url, apiKey) => {
         return {
-            mobileIndex: await getPagePerformanceByStrategy(url, 'mobile'),
-            desktopIndex: await getPagePerformanceByStrategy(url, 'desktop')
+            mobileIndex: await getPagePerformanceByStrategy(url, 'mobile', apiKey),
+            desktopIndex: await getPagePerformanceByStrategy(url, 'desktop', apiKey)
         };
     };
 
@@ -123,6 +130,7 @@
 
     const startPerformanceTest = async () => {
         const url = urlContainer.value,
+            apiKey = apiKeyContainer.value,
             iterations = iterationsContainer.value;
 
         initResultsForm(iterations);
@@ -132,7 +140,7 @@
         for (let iterationNumber = 1; iterationNumber <= iterations; iterationNumber++) {
             let iterationResults = {mobileIndex: '❌', desktopIndex: '❌', iterationNumber};
             try {
-                let results = await getPagePerformance(url);
+                let results = await getPagePerformance(url, apiKey);
                 mobileResults.push(results.mobileIndex);
                 desktopResults.push(results.desktopIndex);
                 iterationResults = {...results, iterationNumber};
