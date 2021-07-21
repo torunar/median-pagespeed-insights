@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="shortcut icon" type="image/x-icon" href="data:image/x-icon;,">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Median PageSpeed Insights</title>
+</head>
+<style>
+    .results-iterations-item__number,
+    .results-summary__number {
+        text-align: left;
+    }
+
+    .results-iterations-item__index,
+    .results-summary__index {
+        text-align: right;
+    }
+
+    .environment__progress:indeterminate {
+        display: none;
+    }
+</style>
+<body>
+
+<form action="#" method="get" onsubmit="startPerformanceTest();" class="environment">
+    <input type="url" required class="environment__url" size="32" placeholder="https://example.com">
+    <input type="number" required class="environment__iterations" value="15" size="6">
+    <button type="submit" class="run-scan">test page speed</button>
+    <progress class="environment__progress"></progress>
+</form>
+
+<table class="results">
+    <thead class="results__header">
+    <tr>
+        <th class="results-header__number">#</th>
+        <th class="results-header__index results-header__index--mobile">mobile</th>
+        <th class="results-header__index results-header__index--desktop">desktop</th>
+    </tr>
+    </thead>
+    <tbody class="results__iterations">
+    <template class="results-iterations__item-template">
+        <tr class="results-iterations__item">
+            <td class="results-iterations-item__number">${data.iterationNumber}</td>
+            <td class="results-iterations-item__index results-iterations-item__index--mobile">${data.mobileIndex}</td>
+            <td class="results-iterations-item__index results-iterations-item__index--desktop">${data.desktopIndex}</td>
+        </tr>
+    </template>
+    </tbody>
+    <tfoot class="results__summary">
+    <tr>
+        <th class="results-summary__number">median</th>
+        <th class="results-summary__index results-summary__index--mobile">?</th>
+        <th class="results-summary__index results-summary__index--desktop">?</th>
+    </tr>
+    </tfoot>
+</table>
+<script>
+    const urlContainer = document.querySelector('.environment__url'),
+        iterationsContainer = document.querySelector('.environment__iterations'),
+        progressContainer = document.querySelector('.environment__progress'),
+        resultsContainer = document.querySelector('.results__iterations'),
+        resultTemplate = document.querySelector('.results-iterations__item-template').innerHTML,
+        mobileMedianContainer = document.querySelector('.results-summary__index--mobile'),
+        desktopMedianContainer = document.querySelector('.results-summary__index--desktop');
+
+    const renderTemplate = (template, data) => {
+        return (new Function('data', `return \`${template}\`;`))(data);
+    };
+
+    const getPagePerformanceByStrategy = async (url, strategy) => {
+        const requestUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?strategy=${strategy}&url=${encodeURIComponent(url)}`;
+        const response = await fetch(requestUrl);
+        const json = await response.json();
+
+        return Math.floor(json.lighthouseResult.categories.performance.score * 100);
+    };
+
+    const getPagePerformance = async (url) => {
+        return {
+            mobileIndex: await getPagePerformanceByStrategy(url, 'mobile'),
+            desktopIndex: await getPagePerformanceByStrategy(url, 'desktop')
+        };
+    };
+
+    const getMedian = (scores) => {
+        let sortedScores = [...scores];
+        sortedScores.sort((a, b) => a - b);
+
+        const length = sortedScores.length;
+
+        if (length % 2 !== 0) {
+            return sortedScores[Math.ceil(length / 2) - 1];
+        }
+
+        return Math.ceil(
+            (
+                sortedScores[Math.floor(length / 2) - 1] +
+                sortedScores[Math.floor(length / 2)]
+            ) / 2
+        );
+    };
+
+    const initResultsForm = (iterations) => {
+        progressContainer.value = 0;
+        progressContainer.max = iterations;
+        resultsContainer.innerHTML = '';
+        mobileMedianContainer.innerHTML = '?';
+        desktopMedianContainer.innerHTML = '?';
+    }
+
+    const renderIterationResults = (iterationResults) => {
+        progressContainer.value = progressContainer.value + 1;
+        resultsContainer.innerHTML += renderTemplate(resultTemplate, iterationResults);
+    };
+
+    const renderSummary = (mobileMedian, desktopMedian) => {
+        mobileMedianContainer.innerHTML = mobileMedian;
+        desktopMedianContainer.innerHTML = desktopMedian;
+        progressContainer.removeAttribute('value');
+    }
+
+    const startPerformanceTest = async () => {
+        const url = urlContainer.value,
+            iterations = iterationsContainer.value;
+
+        initResultsForm(iterations);
+
+        let mobileResults = [],
+            desktopResults = [];
+        for (let iterationNumber = 1; iterationNumber <= iterations; iterationNumber++) {
+            let iterationResults = {mobileIndex: '❌', desktopIndex: '❌', iterationNumber};
+            try {
+                let results = await getPagePerformance(url);
+                mobileResults.push(results.mobileIndex);
+                desktopResults.push(results.desktopIndex);
+                iterationResults = {...results, iterationNumber};
+            } catch(error) {
+            }
+
+            renderIterationResults(iterationResults);
+        }
+
+        renderSummary(getMedian(mobileResults), getMedian(desktopResults));
+
+        return false;
+    };
+
+</script>
+</body>
+</html>
