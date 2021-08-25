@@ -21,17 +21,34 @@
     .environment__progress:indeterminate {
         display: none;
     }
+
+    .results-summary__index--success {
+        font-size: 42px;
+    }
+
+    .results-summary__index--poor {
+        color: #ff4e42;
+    }
+
+    .results-summary__index--needs-improvement {
+        color: #ffa400;
+    }
+
+    .results-summary__index--good {
+        color: #0cce6b;
+    }
+
 </style>
 <body>
 
 <form action="#" method="get" onsubmit="startPerformanceTest(); return false;" class="environment">
     <div>
-        <input type="url" required class="environment__url" size="32" placeholder="https://example.com">
+        <input type="url" required class="environment__url" size="55" placeholder="https://example.com">
         <input type="number" required class="environment__iterations" value="15" size="6">
         <button type="submit" class="run-scan">test page speed</button>
     </div>
     <div>
-        <input type="text" class="environment__api-key" size="32" placeholder="api key">
+        <input type="text" class="environment__api-key" size="55" placeholder="api key">
         <a href="https://developers.google.com/speed/docs/insights/v5/get-started#APIKey" target="_blank">get api key</a>
     </div>
     <progress class="environment__progress"></progress>
@@ -45,25 +62,27 @@
         <th class="results-header__index results-header__index--desktop">desktop</th>
     </tr>
     </thead>
-    <tbody class="results__iterations">
-    <template class="results-iterations__item-template">
-        <tr class="results-iterations__item">
-            <td class="results-iterations-item__number">${data.iterationNumber}</td>
-            <td class="results-iterations-item__index results-iterations-item__index--mobile">${data.mobileIndex}</td>
-            <td class="results-iterations-item__index results-iterations-item__index--desktop">${data.desktopIndex}</td>
+    <tbody class="results__summary">
+        <tr>
+            <th class="results-summary__number">median</th>
+            <th class="results-summary__index results-summary__index--mobile">?</th>
+            <th class="results-summary__index results-summary__index--desktop">?</th>
         </tr>
-    </template>
     </tbody>
-    <tfoot class="results__summary">
-    <tr>
-        <th class="results-summary__number">median</th>
-        <th class="results-summary__index results-summary__index--mobile">?</th>
-        <th class="results-summary__index results-summary__index--desktop">?</th>
-    </tr>
-    </tfoot>
+    <tbody class="results__iterations">
+        <template class="results-iterations__item-template">
+            <tr class="results-iterations__item">
+                <td class="results-iterations-item__number">${data.iterationNumber}</td>
+                <td class="results-iterations-item__index results-iterations-item__index--mobile">${data.mobileIndex}</td>
+                <td class="results-iterations-item__index results-iterations-item__index--desktop">${data.desktopIndex}</td>
+            </tr>
+        </template>
+    </tbody>
 </table>
 <script>
-    const urlContainer = document.querySelector('.environment__url'),
+    const medianContainers = document.querySelectorAll('.results-summary__index'),
+        formContainer = document.querySelector('.environment'),
+        urlContainer = document.querySelector('.environment__url'),
         apiKeyContainer = document.querySelector('.environment__api-key'),
         iterationsContainer = document.querySelector('.environment__iterations'),
         progressContainer = document.querySelector('.environment__progress'),
@@ -71,6 +90,20 @@
         resultTemplate = document.querySelector('.results-iterations__item-template').innerHTML,
         mobileMedianContainer = document.querySelector('.results-summary__index--mobile'),
         desktopMedianContainer = document.querySelector('.results-summary__index--desktop');
+
+    const scanFields = [
+        'environment__url',
+        'environment__iterations',
+        'environment__api-key',
+    ];
+
+    const score = {
+        poor: 0,
+        needsImprovement: 50,
+        good: 90,
+    };
+
+    const prefixKey = 'median_pagespeed_insights__';
 
     const renderTemplate = (template, data) => {
         return (new Function('data', `return \`${template}\`;`))(data);
@@ -122,10 +155,34 @@
         resultsContainer.innerHTML += renderTemplate(resultTemplate, iterationResults);
     };
 
-    const renderSummary = (mobileMedian, desktopMedian) => {
+    const renderMedians = (mobileMedian, desktopMedian) => {
         mobileMedianContainer.innerHTML = mobileMedian;
         desktopMedianContainer.innerHTML = desktopMedian;
+        let median = 0;
+
+        for (const medianContainer of medianContainers) {
+            median = medianContainer.classList.contains('results-summary__index--mobile')
+                ? mobileMedian
+                : desktopMedian;
+
+            medianContainer.classList.toggle('results-summary__index--poor',
+                (median >= score.poor && median < score.needsImprovement)
+            );
+            medianContainer.classList.toggle('results-summary__index--needs-improvement',
+                (median >= score.needsImprovement && median < score.good)
+            );
+            medianContainer.classList.toggle('results-summary__index--good',
+                median >= score.good && median <= 100
+            );
+        };
+    }
+
+    const renderSummary = () => {
         progressContainer.removeAttribute('value');
+
+        for (const medianContainer of medianContainers) {
+            medianContainer.classList.add('results-summary__index--success');
+        }
     }
 
     const startPerformanceTest = async () => {
@@ -148,12 +205,56 @@
             }
 
             renderIterationResults(iterationResults);
+
+            renderMedians(getMedian(mobileResults), getMedian(desktopResults));
         }
 
-        renderSummary(getMedian(mobileResults), getMedian(desktopResults));
+        renderSummary();
 
         return false;
     };
+
+    // State
+    function saveState() {
+        for (const field of scanFields) {
+
+            localStorage.setItem(
+                prefixKey + field,
+                document.querySelector('.' + field).value
+            );
+        }
+    }
+
+    function restoreState() {
+        for (const field of scanFields) {
+            if (localStorage.getItem(field) === null) {
+                return;
+            }
+
+            document.querySelector('.' + field).value = localStorage.getItem(prefixKey + field);
+        }
+    }
+    // /State
+
+    // Page status
+    function pageLoaded(params) {
+        restoreState();
+    }
+    // /Page status
+
+    // Events
+    formContainer.addEventListener('submit', function () {
+        saveState();
+    });
+
+    (function ready(fn) {
+        if (document.readyState != 'loading'){
+            pageLoaded();
+        } else {
+            document.addEventListener('DOMContentLoaded', pageLoaded);
+        }
+    })();
+    // /Events
 
 </script>
 </body>
