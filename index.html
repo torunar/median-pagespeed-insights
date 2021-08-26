@@ -227,7 +227,7 @@
 
     function restoreState() {
         for (const field of scanFields) {
-            if (localStorage.getItem(field) === null) {
+            if (localStorage.getItem(prefixKey + field) === null) {
                 return;
             }
 
