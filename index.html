@@ -8,6 +8,10 @@
     <title>Median PageSpeed Insights</title>
 </head>
 <style>
+    .environment__note {
+        font-family: Arial;
+    }
+
     .results-iterations-item__number,
     .results-summary__number {
         text-align: left;
@@ -50,6 +54,9 @@
     <div>
         <input type="text" class="environment__api-key" size="55" placeholder="api key">
         <a href="https://developers.google.com/speed/docs/insights/v5/get-started#APIKey" target="_blank">get api key</a>
+    </div>
+    <div>
+        <textarea class="environment__note" cols="54" rows="3" placeholder="Note"></textarea>
     </div>
     <progress class="environment__progress"></progress>
 </form>
