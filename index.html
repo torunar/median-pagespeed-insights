@@ -58,6 +58,7 @@
     <div>
         <textarea class="environment__note" cols="54" rows="3" placeholder="Note"></textarea>
     </div>
+    <div class="environment__date">Date</div>
     <progress class="environment__progress"></progress>
 </form>
 
@@ -93,6 +94,7 @@
         apiKeyContainer = document.querySelector('.environment__api-key'),
         iterationsContainer = document.querySelector('.environment__iterations'),
         progressContainer = document.querySelector('.environment__progress'),
+        dateContainer = document.querySelector('.environment__date'),
         resultsContainer = document.querySelector('.results__iterations'),
         resultTemplate = document.querySelector('.results-iterations__item-template').innerHTML,
         mobileMedianContainer = document.querySelector('.results-summary__index--mobile'),
@@ -193,6 +195,8 @@
     }
 
     const startPerformanceTest = async () => {
+        setDate();
+
         const url = urlContainer.value,
             apiKey = apiKeyContainer.value,
             iterations = iterationsContainer.value;
@@ -220,6 +224,10 @@
 
         return false;
     };
+
+    function setDate (params) {
+        dateContainer.innerHTML = Date();
+    }
 
     // State
     function saveState() {
